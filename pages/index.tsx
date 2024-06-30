@@ -13,7 +13,7 @@ import { io, Socket } from "socket.io-client";
 let socket: Socket;
 export default function Home() {
   const { account } = useWallet();
-  const [prices, setPrices] = useState<any>();
+  const [prices, setPrices] = useState<any>({bluePrice: 0, redPrice: 0});
   const [buyAmount, setBuyAmount] = useState<number>(0);
   const [sellAmount, setSellAmount] = useState<number>(0);
   const [blueBuyAmount, setBlueBuyAmount] = useState<number>(0);
