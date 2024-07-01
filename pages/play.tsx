@@ -117,11 +117,11 @@ export default function Game() {
           break;
         }
       }
-      if (team === "red") {
-        await transferRedToContract(price);
-      } else {
-        await transferBlueToContract(price);
-      }
+      // if (team === "red") {
+      //   await transferRedToContract(price);
+      // } else {
+      //   await transferBlueToContract(price);
+      // }
       socket?.disconnect();
       clearInterval(interval);
       socket = io(process.env.NEXT_PUBLIC_SERVER_URL!, {
