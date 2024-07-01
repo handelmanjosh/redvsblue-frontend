@@ -26,29 +26,49 @@ export async function swap(token: number, direction: string, amount: number) {
     if (token === 0) {
         if (direction === "left") {
             // righttoleft
-           await approve(amount, platformTokenAddress);
-           await contract.transfer(redTokenAddress, amount, false);
+            const tx = await approve(amount, platformTokenAddress);
+            const receipt = await tx.wait();
+            await contract.transfer(redTokenAddress, amount, false);
         } else {
             // lefttoright
-            await approve(amount, redTokenAddress);
+            const tx = await approve(amount, redTokenAddress);
+            const receipt = await tx.wait();
             await contract.transfer(redTokenAddress, amount, true);
         }
     } else {
         if (direction === "left") {
-            await approve(amount, platformTokenAddress);
+            const tx = await approve(amount, platformTokenAddress);
+            const receipt = await tx.wait();
             await contract.transfer(blueTokenAddress, amount, false);
         } else {
-            await approve(amount, blueTokenAddress);
+            const tx = await approve(amount, blueTokenAddress);
+            const receipt = await tx.wait();
             await contract.transfer(blueTokenAddress, amount, true);
         }
     }
+}
+export async function transferBlueToContract(amount: number) {
+    const provider = new BrowserProvider((window as any).ethereum);
+    const signer = await provider.getSigner();
+    const contract = new Contract(contractAddress, ABI, signer);
+    const blueTokenAddress = await contract.tokenB();
+    const token = new Contract(blueTokenAddress, tokenABI, signer);
+    await token.transfer(contractAddress, amount);
+}
+export async function transferRedToContract(amount: number) {
+    const provider = new BrowserProvider((window as any).ethereum);
+    const signer = await provider.getSigner();
+    const contract = new Contract(contractAddress, ABI, signer);
+    const redTokenAddress = await contract.tokenA();
+    const token = new Contract(redTokenAddress, tokenABI, signer);
+    await token.transfer(contractAddress, amount);
 }
 
 async function approve(amount: number, contractAddress1: string) {
     const provider = new BrowserProvider((window as any).ethereum);
     const signer = await provider.getSigner();
     const tokenContract = new Contract(contractAddress1, tokenABI, signer);
-    await tokenContract.approve(contractAddress, amount);
+    return await tokenContract.approve(contractAddress, amount);
 }
 
 export async function getPoints() {
@@ -81,7 +101,7 @@ export async function getBalance(signer: JsonRpcSigner, platformAddress: any) {
 export async function getTokenBalances() {
     const provider = new BrowserProvider((window as any).ethereum);
     const signer = await provider.getSigner();
-    const contract  = new Contract(contractAddress, ABI, signer);
+    const contract = new Contract(contractAddress, ABI, signer);
     const platformAddress = await contract.platformToken();
     const redTokenAddress = await contract.tokenA();
     const blueTokenAddress = await contract.tokenB();
@@ -97,7 +117,7 @@ export async function getTokenBalances() {
 export async function getPools() {
     const provider = new BrowserProvider((window as any).ethereum);
     const signer = await provider.getSigner();
-    const contract  = new Contract(contractAddress, ABI, signer);
+    const contract = new Contract(contractAddress, ABI, signer);
     const redTokenAddress = await contract.tokenA();
     const blueTokenAddress = await contract.tokenB();
     const redPool = await contract.viewPool(redTokenAddress);
@@ -107,11 +127,12 @@ export async function getPools() {
 export async function getPrices() {
     const provider = new BrowserProvider((window as any).ethereum);
     const signer = await provider.getSigner();
-    const contract  = new Contract(contractAddress, ABI, signer);
+    const contract = new Contract(contractAddress, ABI, signer);
     const redTokenAddress = await contract.tokenA();
     const blueTokenAddress = await contract.tokenB();
     const redPool = await contract.viewPool(redTokenAddress);
     const bluePool = await contract.viewPool(blueTokenAddress);
+    console.log({ redPool, bluePool });
     // left: platformToken, right: token
     const redPoolLeft = new BigNumber(redPool.left.toString());
     const redPoolRight = new BigNumber(redPool.right.toString());
@@ -125,7 +146,7 @@ export async function getPrices() {
 export async function getTime() {
     const provider = new BrowserProvider((window as any).ethereum);
     const signer = await provider.getSigner();
-    const contract  = new Contract(contractAddress, ABI, signer);
+    const contract = new Contract(contractAddress, ABI, signer);
     const time = await contract.viewEndTime();
     return time;
 }

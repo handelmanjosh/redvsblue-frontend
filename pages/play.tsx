@@ -1,6 +1,8 @@
 import BasicButton from "@/components/BasicButton";
 import GameButton from "@/components/GameButton";
 import { useWallet } from "@/components/hooks/WalletContext";
+import Loader from "@/components/Loader";
+import { transferBlueToContract, transferRedToContract } from "@/components/utils/crypto";
 import { shortenAddress } from "@/components/utils/utils";
 import WalletButton from "@/components/WalletButton";
 import { useRouter } from "next/router";
@@ -50,8 +52,9 @@ export default function Game() {
   const [needsAccount, setNeedsAccount] = useState<boolean>(false);
   const [needsPlane, setNeedsPlane] = useState<boolean>(false);
   const [myMessages, setMyMessages] = useState<any[]>([]);
-  const {account, connectWallet} = useWallet();
+  const { account, connectWallet } = useWallet();
   const [team, setTeam] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
   const router = useRouter();
   useEffect(() => {
     canvas = document.getElementById("canvas")! as HTMLCanvasElement;
@@ -65,61 +68,79 @@ export default function Game() {
   }, []);
   useEffect(() => {
     if (router.isReady) {
-        const {team} = router.query;
-        setTeam(team as string);
+      const { team } = router.query;
+      setTeam(team as string);
     }
-  }, [router, router.isReady])
-  const connect = () => {
-    if (!account && !plane) {
+  }, [router, router.isReady]);
+  const connect = async () => {
+    try {
+      //setLoading(true);
+      if (!account && !plane) {
         setNeedsAccount(true);
         setNeedsPlane(true);
-    }
-    if (!account) {
+      }
+      if (!account) {
         setNeedsAccount(true);
         return;
-    }
-    if (!plane) {
+      }
+      if (!plane) {
         setNeedsPlane(true);
         return;
+      }
+      if (isPlaying) return;
+      setIsPlaying(true);
+      let type: number;
+      let price: number = 10;
+      switch (plane) {
+        case "/f4-eagle.png":
+          type = 0;
+          price = 10;
+          break;
+        case "/f14-tomcat.png": {
+          type = 1;
+          price = 30;
+          break;
+        }
+        case "/f106-deltadart.png": {
+          type = 2;
+          price = 50;
+          break;
+        }
+        case "/f117-nighthawk.png": {
+          type = 3;
+          price = 100;
+          break;
+        }
+        default: {
+          type = 0;
+          price = 10;
+          break;
+        }
+      }
+      if (team === "red") {
+        await transferRedToContract(price);
+      } else {
+        await transferBlueToContract(price);
+      }
+      socket?.disconnect();
+      clearInterval(interval);
+      socket = io(process.env.NEXT_PUBLIC_SERVER_URL!, {
+        query: {
+          wallet: account,
+          type,
+          team,
+        }
+      });
+      socket.connect();
+      socket.on("data", handleSocketData);
+      interval = setInterval(() => {
+        socket.emit("data", payload);
+      }, 1000 / 60);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
     }
-    if (isPlaying) return;
-    setIsPlaying(true);
-    let type: number;
-    switch (plane) {
-      case "/f4-eagle.png":
-        type = 0;
-        break;
-      case "/f14-tomcat.png": {
-        type = 1;
-        break;
-      }
-      case "/f106-deltadart.png": {
-        type = 2;
-        break;
-      }
-      case "/f117-nighthawk.png": {
-        type = 3;
-        break;
-      }
-      default: {
-        type = 0;
-        break;
-      }
-    }
-    socket?.disconnect();
-    clearInterval(interval);
-    socket = io(process.env.NEXT_PUBLIC_SERVER_URL!, {
-      query: {
-        wallet: account,
-        type,
-        team,
-      }
-    });
-    socket.connect();
-    socket.on("data", handleSocketData);
-    interval = setInterval(() => {
-      socket.emit("data", payload);
-    }, 1000 / 60);
   };
   const disconnect = () => {
     socket.disconnect();
@@ -155,6 +176,7 @@ export default function Game() {
   const distance = (i1: any, i2: any): number => Math.sqrt((i1.x - i2.x) ** 2 + (i1.y - i2.y) ** 2);
   const adjustToCanvas = (x: number, y: number) => [x + canvas.width / 2, -y + canvas.height / 2];
   const handleSocketData = (data: { players: any[], bullets: any[]; messages: any[]; }) => {
+    console.log("recieved data");
     context.clearRect(0, 0, 10000, 10000);
     //webgl_clear_rect(context);
     let { players, bullets, messages } = data;
@@ -320,6 +342,14 @@ export default function Game() {
       }
     }
   };
+  if (loading) {
+    return (
+      <div className="w-screen h-screen flex flex-col gap-4 justify-center items-center">
+        <Loader color={team} />
+        <p>Loading...</p>
+      </div>
+    );
+  }
   return (
     <div className="w-screen h-screen relative" style={{ userSelect: "none", fontFamily: 'system-ui' }}>
       {!isPlaying &&
@@ -334,19 +364,19 @@ export default function Game() {
             {myMessages.map((message: any, i: number) => {
               if (message.killed === account) {
                 return (
-                  <p key={i} className="flex flex-row justify-center items-center gap-2">
+                  <div key={i} className="flex flex-row justify-center items-center gap-2">
                     <span className="text-green-600">You</span>
                     <p>were killed by </p>
                     <span className="text-red-600">{shorten(message.killedBy)}</span>
-                  </p>
+                  </div>
                 );
               } else {
                 return (
-                  <p key={i} className="flex flex-row justify-center items-center gap-2">
+                  <div key={i} className="flex flex-row justify-center items-center gap-2">
                     <span className="text-green-600">You</span>
                     <p>killed</p>
                     <span className="text-red-600">{shorten(message.killed)}</span>
-                  </p>
+                  </div>
                 );
               }
             })}
@@ -355,7 +385,7 @@ export default function Game() {
       }
       {!isPlaying &&
         <div className="absolute inset-0 flex justify-center items-center z-20">
-          <div className="flex flex-col justify-center items-center rounded-lg p-4 bg-cover w-auto" style={{ backgroundImage: `url("/murica3.webp")` }}>
+          <div className="flex flex-col justify-center items-center rounded-lg p-4 w-auto">
             <div className={`flex flex-row justify-start items-center max-w-4xl p-4 space-x-4 ${needsPlane ? "border-4 border-red-600" : ""}`}>
               {images.map((image: string, i: number) => {
                 const data = dataMap.get(image)!;
@@ -370,21 +400,21 @@ export default function Game() {
               })}
             </div>
             {team !== "red" && team != "blue" &&
-                <div className="flex flex-col justify-center items-center gap-2 mb-2">
-                    <p>Select Team:</p>
-                    <div className="flex flex-row justify-center items-center gap-2">
-                        <button className={`text-lg px-4 py-2 bg-red-500 hover:brightness-90 active:brightness-75`} onClick={() => setTeam("red")}>Team Red</button>
-                        <button className={`text-lg px-4 py-2 bg-blue-600 hover:brightness-90 active:brightness-75`} onClick={() => setTeam("blue")}>Team Blue</button>
-                    </div>
+              <div className="flex flex-col justify-center items-center gap-2 mb-2">
+                <p>Select Team:</p>
+                <div className="flex flex-row justify-center items-center gap-2">
+                  <button className={`text-lg px-4 py-2 bg-red-500 hover:brightness-90 active:brightness-75`} onClick={() => setTeam("red")}>Team Red</button>
+                  <button className={`text-lg px-4 py-2 bg-blue-600 hover:brightness-90 active:brightness-75`} onClick={() => setTeam("blue")}>Team Blue</button>
                 </div>
+              </div>
             }
             {/* <BasicButton text="Play" color="black" onClick={connect} /> */}
             <button className={`text-lg px-4 py-2 ${team === "red" ? "bg-red-500" : team === "blue" ? "bg-blue-500" : "bg-white"} hover:brightness-90 active:brightness-75`} onClick={connect}>Play</button>
-            <p className="text-white bg-red-600 p-2 rounded-lg mt-2">In development. Test out the game on desktop</p>
+            {/* <p className="text-white bg-red-600 p-2 rounded-lg mt-2">Best experience is on Desktop</p> */}
             <div className="mt-2 flex flex-row gap-2 justify-center items-center">
-                <div className={`w-auto h-auto ${needsAccount ? "border-4 border-red-600" : ""}`}>
-                    <GameButton onClick={connectWallet} text={account ? shortenAddress(account) : "Connect Wallet"} />
-                </div>
+              <div className={`w-auto h-auto ${needsAccount ? "border-4 border-red-600" : ""}`}>
+                <GameButton onClick={connectWallet} text={account ? shortenAddress(account) : "Connect Wallet"} />
+              </div>
             </div>
           </div>
         </div>
@@ -394,6 +424,6 @@ export default function Game() {
   );
 };
 function shorten(string: string) {
-    if (string.startsWith("AI")) return string;
+  if (string.startsWith("AI")) return string;
   return `${string.slice(0, 4)}...${string.slice(string.length - 4, string.length)}`;
 }

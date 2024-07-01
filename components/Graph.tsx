@@ -8,10 +8,10 @@ function randomBetween(low: number, high: number) {
 }
 function calculateBounds(n: number, range: number) {
     let low = Math.max(-n, -range);
-    return {high: range, low};
+    return { high: range, low };
 }
 
-export default function MintGraph({inputData}: {inputData: number[]}) {
+export default function MintGraph({ inputData }: { inputData: number[]; }) {
     const [data, setData] = useState<any>();
     const [options, setOptions] = useState<any>();
     useEffect(() => {
@@ -19,10 +19,9 @@ export default function MintGraph({inputData}: {inputData: number[]}) {
             datasets: [
                 {
                     label: 'y = x^2',
-                    data: inputData.map((d, i) => { return { x: i, y: d } }),
-                    fill: true,
+                    data: inputData.map((d, i) => { return { x: i, y: d }; }),
                     borderColor: 'black',
-                    borderWidth: 4,
+                    borderWidth: 2,
                     pointRadius: 0,
                 },
             ],

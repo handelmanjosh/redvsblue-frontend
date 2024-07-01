@@ -2,7 +2,7 @@
 
 
 export function shortenAddress(address: string): string {
-    return `${address.substring(0, 4)}...${address.substring(address.length - 4, address.length)}`
+    return `${address.substring(0, 4)}...${address.substring(address.length - 4, address.length)}`;
 }
 
 export function displayBigNumber(big: bigint) {
@@ -26,17 +26,19 @@ export function displayBigNumber(big: bigint) {
     return `${mantissa}e${exponent}`;
 }
 
-export function timeToHoursMinutesSeconds(time: number): string {
-    // Calculate hours, minutes, and seconds
-    const hours = Math.floor(time / 3600); // Get total hours
+export function timeToString(time: number): string {
+    // Calculate days, hours, minutes, and seconds
+    const days = Math.floor(time / 86400); // Get total days
+    const hours = Math.floor((time % 86400) / 3600); // Get remaining hours
     const minutes = Math.floor((time % 3600) / 60); // Get remaining minutes
     const seconds = time % 60; // Get remaining seconds
 
-    // Format hours, minutes, and seconds to always be two digits
+    // Format days, hours, minutes, and seconds to always be two digits
+    const formattedDays = days.toString().padStart(2, '0');
     const formattedHours = hours.toString().padStart(2, '0');
     const formattedMinutes = minutes.toString().padStart(2, '0');
     const formattedSeconds = seconds.toString().padStart(2, '0');
 
     // Combine into a single string
-    return `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
+    return `${formattedDays}d:${formattedHours}h:${formattedMinutes}m:${formattedSeconds}s`;
 }
